@@ -16,22 +16,22 @@ class Verz < Formula
   desc "A semver management tool similar to npm version, implemented in Rust"
   homepage "https://github.com/rotty3000/verz"
   license "Apache-2.0"
-  version "0.1.4"
+  version "0.1.6"
 
   on_linux do
     if Hardware::CPU.intel?
-      sha256 "7f415e2133779726029410021871d92a1e853db24348374f8e79cd0e4cc52c6a"
-      url "https://github.com/rotty3000/verz/releases/download/v0.1.4/verz-linux-amd64"
+      sha256 "e8ed07df0c33c0d5004a7624f5c465be4f6358a9ff8c166909d3e419dd72477d"
+      url "https://github.com/rotty3000/verz/releases/download/v0.1.6/verz-linux-amd64"
     elsif Hardware::CPU.arm?
-      sha256 "4daf08715a5024c81198bec96c68a779fad69c38f33ffcb18cdad72c459466d2"
-      url "https://github.com/rotty3000/verz/releases/download/v0.1.4/verz-linux-arm64"
+      sha256 "4defe69ed6969ab318c982e89898c30983726afadbf9e6bc176c1352a4d2137f"
+      url "https://github.com/rotty3000/verz/releases/download/v0.1.6/verz-linux-arm64"
     end
   end
 
   on_macos do
     depends_on "rust" => :build
-    sha256 "a439de6891cf5a4c3059e7635c8d39b11e4bda212530378c67ae3ea0018fb482"
-    url "https://github.com/rotty3000/verz/archive/refs/tags/v0.1.4.tar.gz"
+    sha256 "6a1038c5e9a7707ad7b18e6dfff2b89db6c8cd489f5c104f20155e5b34854336"
+    url "https://github.com/rotty3000/verz/archive/refs/tags/v0.1.6.tar.gz"
   end
 
   def install
