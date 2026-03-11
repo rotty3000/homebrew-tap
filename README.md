@@ -19,3 +19,11 @@ A simple command-line tool for parsing and formatting URLs, implemented in Rust.
 ```bash
 brew install durl
 ```
+
+### [verz](https://github.com/rotty3000/verz)
+
+A simple command-line tool for managing semantic versions, implemented in Rust.
+
+```bash
+brew install verz
+```
