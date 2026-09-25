@@ -1,0 +1,94 @@
+# Copyright 2026 Raymond Auge <rayauge@doublebite.com>
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Keeps Formula/verz.rb in sync with the latest verz release WITHOUT a
+# cross-repo token: this workflow runs inside homebrew-tap, so the built-in
+# GITHUB_TOKEN already has write access here. It reads verz's public releases
+# (no auth needed) and commits a formula bump when a newer version appears.
+#   - schedule: picks up new releases automatically (hourly).
+#   - workflow_dispatch: the "Run workflow" button for an instant update.
+
+name: Update verz formula
+
+on:
+  workflow_dispatch:
+  schedule:
+  - cron: "17 * * * *"
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  update:
+    name: Sync formula to latest verz release
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Update Formula/verz.rb to latest verz release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -euo pipefail
+
+        TAG=$(gh release view --repo rotty3000/verz --json tagName --jq .tagName)
+        VERSION=${TAG#v}
+        CURRENT=$(grep -oP 'version "\K[^"]+' Formula/verz.rb | head -1)
+        echo "Latest release: $TAG (version $VERSION); formula currently: $CURRENT"
+
+        if [ "$VERSION" = "$CURRENT" ]; then
+          echo "Formula already at $VERSION — nothing to do."
+          exit 0
+        fi
+
+        AMD64_URL="https://github.com/rotty3000/verz/releases/download/${TAG}/verz-linux-amd64"
+        ARM64_URL="https://github.com/rotty3000/verz/releases/download/${TAG}/verz-linux-arm64"
+        SOURCE_URL="https://github.com/rotty3000/verz/archive/refs/tags/${TAG}.tar.gz"
+
+        curl -fsSL -o verz-linux-amd64 "$AMD64_URL"
+        curl -fsSL -o verz-linux-arm64 "$ARM64_URL"
+        curl -fsSL -o verz-source.tar.gz "$SOURCE_URL"
+
+        AMD64_SHA=$(sha256sum verz-linux-amd64 | awk '{print $1}')
+        ARM64_SHA=$(sha256sum verz-linux-arm64 | awk '{print $1}')
+        SOURCE_SHA=$(sha256sum verz-source.tar.gz | awk '{print $1}')
+
+        # Update version
+        sed -i "s|version \".*\"|version \"$VERSION\"|" Formula/verz.rb
+
+        # Update Linux AMD64 (sha256 then url, within the intel? branch)
+        perl -i -0777 -pe "s|(if Hardware::CPU.intel\?.*?sha256 \").*?(\".*?url \").*?(\")|\${1}$AMD64_SHA\${2}$AMD64_URL\${3}|s" Formula/verz.rb
+
+        # Update Linux ARM64
+        perl -i -0777 -pe "s|(elsif Hardware::CPU.arm\?.*?sha256 \").*?(\".*?url \").*?(\")|\${1}$ARM64_SHA\${2}$ARM64_URL\${3}|s" Formula/verz.rb
+
+        # Update macOS/Source
+        perl -i -0777 -pe "s|(on_macos.*?sha256 \").*?(\".*?url \").*?(\")|\${1}$SOURCE_SHA\${2}$SOURCE_URL\${3}|s" Formula/verz.rb
+
+        rm -f verz-linux-amd64 verz-linux-arm64 verz-source.tar.gz
+
+        if git diff --quiet -- Formula/verz.rb; then
+          echo "No formula changes produced despite version mismatch — aborting." >&2
+          exit 1
+        fi
+
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add Formula/verz.rb
+        git commit -m "Update verz to $TAG"
+        git push
